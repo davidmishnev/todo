@@ -91,17 +91,20 @@ func (s *Server) createTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	created, err := s.storage.CreateTask(task)
-	if errors.Is(err, tasks.ErrWrongArgument) {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		switch {
+		case errors.Is(err, tasks.ErrWrongArgument):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
 	err = json.NewEncoder(w).Encode(created)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -122,9 +125,15 @@ func (s *Server) getAllTodos(w http.ResponseWriter) {
 
 func (s *Server) getTodoByID(w http.ResponseWriter, id int) {
 	task, err := s.storage.GetByID(id)
-	if errors.Is(err, tasks.ErrTaskNotFound) {
-		http.Error(w, "Task not found", http.StatusNotFound)
-		return
+	if err != nil {
+		switch {
+		case errors.Is(err, tasks.ErrTaskNotFound):
+			http.Error(w, "Task not found", http.StatusNotFound)
+			return
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -143,17 +152,23 @@ func (s *Server) updateTodo(w http.ResponseWriter, r *http.Request, id int) {
 	}
 
 	updated, err := s.storage.Update(id, &task)
-	if errors.Is(err, tasks.ErrWrongArgument) {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if errors.Is(err, tasks.ErrTaskNotFound) {
-		http.Error(w, "Task not found", http.StatusNotFound)
-		return
+	if err != nil {
+		switch {
+		case errors.Is(err, tasks.ErrWrongArgument):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		case errors.Is(err, tasks.ErrTaskNotFound):
+			http.Error(w, "Task not found", http.StatusNotFound)
+			return
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(updated)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -162,9 +177,16 @@ func (s *Server) updateTodo(w http.ResponseWriter, r *http.Request, id int) {
 
 func (s *Server) deleteTodo(w http.ResponseWriter, id int) {
 	err := s.storage.Delete(id)
-	if errors.Is(err, tasks.ErrTaskNotFound) {
-		http.Error(w, "Task not found", http.StatusNotFound)
-		return
+
+	if err != nil {
+		switch {
+		case errors.Is(err, tasks.ErrTaskNotFound):
+			http.Error(w, "Task not found", http.StatusNotFound)
+			return
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
