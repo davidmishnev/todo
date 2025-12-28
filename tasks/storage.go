@@ -1,81 +1,86 @@
 package tasks
 
 import (
-	"math/rand"
 	"sync"
 )
 
 type Storage struct {
-	mutex sync.RWMutex
-	tasks map[int]Task
+	counter int
+	mutex   sync.RWMutex
+	tasks   map[int]Task
 }
 
 func NewStorage() *Storage {
 	return &Storage{
-		tasks: make(map[int]Task),
+		counter: 0,
+		tasks:   make(map[int]Task),
 	}
 }
 
-func (this *Storage) CreateTask(task Task) (*Task, error) {
+func (s *Storage) CreateTask(task Task) (*Task, error) {
 	if task.Header == "" {
 		return nil, ErrWrongArgument
 	}
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
-	task.TaskID = rand.Int()
-	this.tasks[task.TaskID] = task
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	task.TaskID = s.counter
+	s.counter++
+	s.tasks[task.TaskID] = task
+
 	return &task, nil
 }
 
-func (this *Storage) Delete(id int) error {
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
+func (s *Storage) Delete(id int) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	if _, exists := this.tasks[id]; !exists {
+	if _, exists := s.tasks[id]; !exists {
 		return ErrTaskNotFound
 	}
 
-	delete(this.tasks, id)
+	delete(s.tasks, id)
 	return nil
 }
 
-func (this *Storage) Update(id int, updated *Task) (*Task, error) {
+func (s *Storage) Update(id int, updated *Task) (*Task, error) {
 	if updated.Header == "" {
 		return nil, ErrWrongArgument
 	}
 
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
-	task, exists := this.tasks[id]
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	task, exists := s.tasks[id]
 	if !exists {
 		return nil, ErrTaskNotFound
 	}
 	task.Header = updated.Header
 	task.Description = updated.Description
 	task.Status = updated.Status
-	this.tasks[id] = task
+	s.tasks[id] = task
 
 	return &task, nil
 }
 
-func (this *Storage) GetAll() []*Task {
-	this.mutex.RLock()
-	defer this.mutex.RUnlock()
+func (s *Storage) GetAll() []Task {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
-	result := make([]*Task, 0, len(this.tasks))
-	for _, task := range this.tasks {
-		result = append(result, &task)
+	result := make([]Task, 0, len(s.tasks))
+	for _, task := range s.tasks {
+		result = append(result, task)
 	}
 
 	return result
 }
 
-func (this *Storage) GetByID(id int) (*Task, error) {
-	this.mutex.RLock()
-	defer this.mutex.RUnlock()
-	task, exists := this.tasks[id]
+func (s *Storage) GetByID(id int) (Task, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	task, exists := s.tasks[id]
 	if !exists {
-		return nil, ErrTaskNotFound
+		return Task{}, ErrTaskNotFound
 	}
-	return &task, nil
+	return task, nil
 }
