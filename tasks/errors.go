@@ -3,5 +3,6 @@ package tasks
 import "errors"
 
 var (
-	ErrTaskNotFound = errors.New("task is not found")
+	ErrTaskNotFound  = errors.New("task is not found")
+	ErrWrongArgument = errors.New("wrong argument")
 )
