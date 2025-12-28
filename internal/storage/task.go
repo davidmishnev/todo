@@ -1,4 +1,4 @@
-package tasks
+package storage
 
 type TaskStatus int
 

@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -9,24 +9,24 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"todo/tasks"
+	"todo/internal/storage"
 )
 
 const SecToTimeout = 5
 
 type Server struct {
-	storage *tasks.Storage
+	storage *storage.Storage
 	logger  *log.Logger
 }
 
-func NewServer(storage *tasks.Storage, logger *log.Logger) *Server {
+func NewServer(storage *storage.Storage, logger *log.Logger) *Server {
 	return &Server{
 		storage: storage,
 		logger:  logger,
 	}
 }
 
-func (s *Server) loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
+func (s *Server) LoggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		s.logger.Printf("%s %s started", r.Method, r.URL.Path)
@@ -35,7 +35,7 @@ func (s *Server) loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleTodos(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleTodos(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), SecToTimeout*time.Second)
 	defer cancel()
 
@@ -51,7 +51,7 @@ func (s *Server) handleTodos(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) handleTodoByID(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleTodoByID(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), SecToTimeout*time.Second)
 	defer cancel()
 
@@ -84,7 +84,7 @@ func (s *Server) extractID(path string) (int, error) {
 }
 
 func (s *Server) createTodo(w http.ResponseWriter, r *http.Request) {
-	var task tasks.Task
+	var task storage.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -93,7 +93,7 @@ func (s *Server) createTodo(w http.ResponseWriter, r *http.Request) {
 	created, err := s.storage.CreateTask(task)
 	if err != nil {
 		switch {
-		case errors.Is(err, tasks.ErrWrongArgument):
+		case errors.Is(err, storage.ErrWrongArgument):
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		default:
@@ -127,7 +127,7 @@ func (s *Server) getTodoByID(w http.ResponseWriter, id int) {
 	task, err := s.storage.GetByID(id)
 	if err != nil {
 		switch {
-		case errors.Is(err, tasks.ErrTaskNotFound):
+		case errors.Is(err, storage.ErrTaskNotFound):
 			http.Error(w, "Task not found", http.StatusNotFound)
 			return
 		default:
@@ -145,7 +145,7 @@ func (s *Server) getTodoByID(w http.ResponseWriter, id int) {
 }
 
 func (s *Server) updateTodo(w http.ResponseWriter, r *http.Request, id int) {
-	var task tasks.Task
+	var task storage.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -154,10 +154,10 @@ func (s *Server) updateTodo(w http.ResponseWriter, r *http.Request, id int) {
 	updated, err := s.storage.Update(id, &task)
 	if err != nil {
 		switch {
-		case errors.Is(err, tasks.ErrWrongArgument):
+		case errors.Is(err, storage.ErrWrongArgument):
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
-		case errors.Is(err, tasks.ErrTaskNotFound):
+		case errors.Is(err, storage.ErrTaskNotFound):
 			http.Error(w, "Task not found", http.StatusNotFound)
 			return
 		default:
@@ -180,7 +180,7 @@ func (s *Server) deleteTodo(w http.ResponseWriter, id int) {
 
 	if err != nil {
 		switch {
-		case errors.Is(err, tasks.ErrTaskNotFound):
+		case errors.Is(err, storage.ErrTaskNotFound):
 			http.Error(w, "Task not found", http.StatusNotFound)
 			return
 		default:

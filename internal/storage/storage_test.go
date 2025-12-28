@@ -1,4 +1,4 @@
-package tasks
+package storage
 
 import (
 	"errors"
@@ -37,7 +37,7 @@ func TestGetByID(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if found.Header != "Test" {
-		t.Errorf("expected title 'Test', got %storage", found.Header)
+		t.Errorf("expected title 'Test', got %s", found.Header)
 	}
 }
 
@@ -60,7 +60,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if updated.Header != "Updated" {
-		t.Errorf("expected title 'Updated', got %storage", updated.Header)
+		t.Errorf("expected title 'Updated', got %s", updated.Header)
 	}
 }
 

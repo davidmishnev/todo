@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bytes"
@@ -9,13 +9,13 @@ import (
 	"os"
 	"strconv"
 	"testing"
-	"todo/tasks"
+	"todo/internal/storage"
 )
 
 func setupServer() *Server {
-	storage := tasks.NewStorage()
+	st := storage.NewStorage()
 	logger := log.New(os.Stdout, "TEST: ", log.LstdFlags)
-	return NewServer(storage, logger)
+	return NewServer(st, logger)
 }
 
 func TestCreateTodo(t *testing.T) {
@@ -48,7 +48,7 @@ func TestCreateTodo(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/todos", bytes.NewBufferString(tt.payload))
 			w := httptest.NewRecorder()
 
-			server.handleTodos(w, req)
+			server.HandleTodos(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
@@ -60,19 +60,19 @@ func TestCreateTodo(t *testing.T) {
 func TestGetAllTodos(t *testing.T) {
 	server := setupServer()
 
-	task := tasks.Task{Header: "Test Task", Description: "Test Description", Status: tasks.Assigned}
+	task := storage.Task{Header: "Test Task", Description: "Test Description", Status: storage.Assigned}
 	_, _ = server.storage.CreateTask(task)
 
 	req := httptest.NewRequest(http.MethodGet, "/todos", nil)
 	w := httptest.NewRecorder()
 
-	server.handleTodos(w, req)
+	server.HandleTodos(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	var result []*tasks.Task
+	var result []storage.Task
 	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestGetAllTodos(t *testing.T) {
 func TestGetTodoByID(t *testing.T) {
 	server := setupServer()
 
-	task := tasks.Task{Header: "Test Task", Description: "Test Description", Status: tasks.Assigned}
+	task := storage.Task{Header: "Test Task", Description: "Test Description", Status: storage.Assigned}
 	created, _ := server.storage.CreateTask(task)
 
 	tests := []struct {
@@ -110,7 +110,7 @@ func TestGetTodoByID(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/todos/"+strconv.Itoa(tt.id), nil)
 			w := httptest.NewRecorder()
 
-			server.handleTodoByID(w, req)
+			server.HandleTodoByID(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
@@ -122,7 +122,7 @@ func TestGetTodoByID(t *testing.T) {
 func TestUpdateTodo(t *testing.T) {
 	server := setupServer()
 
-	task := tasks.Task{Header: "Original Task", Description: "Original Description", Status: tasks.Assigned}
+	task := storage.Task{Header: "Original Task", Description: "Original Description", Status: storage.Assigned}
 	created, _ := server.storage.CreateTask(task)
 
 	tests := []struct {
@@ -156,7 +156,7 @@ func TestUpdateTodo(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/todos/"+strconv.Itoa(tt.id), bytes.NewBufferString(tt.payload))
 			w := httptest.NewRecorder()
 
-			server.handleTodoByID(w, req)
+			server.HandleTodoByID(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
@@ -168,18 +168,18 @@ func TestUpdateTodo(t *testing.T) {
 func TestUpdateTodoStatus(t *testing.T) {
 	server := setupServer()
 
-	task := tasks.Task{Header: "Test Task", Description: "Test", Status: tasks.Assigned}
+	task := storage.Task{Header: "Test Task", Description: "Test", Status: storage.Assigned}
 	created, _ := server.storage.CreateTask(task)
 
 	tests := []struct {
 		name           string
-		status         tasks.TaskStatus
+		status         storage.TaskStatus
 		expectedStatus int
 	}{
-		{"update to in progress", tasks.InProgress, http.StatusOK},
-		{"update to completed", tasks.Completed, http.StatusOK},
-		{"update to dropped", tasks.Dropped, http.StatusOK},
-		{"update back to assigned", tasks.Assigned, http.StatusOK},
+		{"update to in progress", storage.InProgress, http.StatusOK},
+		{"update to completed", storage.Completed, http.StatusOK},
+		{"update to dropped", storage.Dropped, http.StatusOK},
+		{"update back to assigned", storage.Assigned, http.StatusOK},
 	}
 
 	for _, tt := range tests {
@@ -188,13 +188,13 @@ func TestUpdateTodoStatus(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/todos/"+strconv.Itoa(created.TaskID), bytes.NewBufferString(payload))
 			w := httptest.NewRecorder()
 
-			server.handleTodoByID(w, req)
+			server.HandleTodoByID(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
 			}
 
-			var result tasks.Task
+			var result storage.Task
 			if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 				t.Fatalf("failed to decode response: %v", err)
 			}
@@ -209,7 +209,7 @@ func TestUpdateTodoStatus(t *testing.T) {
 func TestDeleteTodo(t *testing.T) {
 	server := setupServer()
 
-	task := tasks.Task{Header: "Test Task", Description: "Test Description", Status: tasks.Assigned}
+	task := storage.Task{Header: "Test Task", Description: "Test Description", Status: storage.Assigned}
 	created, _ := server.storage.CreateTask(task)
 
 	tests := []struct {
@@ -234,7 +234,7 @@ func TestDeleteTodo(t *testing.T) {
 			req := httptest.NewRequest(http.MethodDelete, "/todos/"+strconv.Itoa(tt.id), nil)
 			w := httptest.NewRecorder()
 
-			server.handleTodoByID(w, req)
+			server.HandleTodoByID(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
@@ -261,9 +261,9 @@ func TestMethodNotAllowed(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			if tt.path == "/todos" {
-				server.handleTodos(w, req)
+				server.HandleTodos(w, req)
 			} else {
-				server.handleTodoByID(w, req)
+				server.HandleTodoByID(w, req)
 			}
 
 			if w.Code != http.StatusMethodNotAllowed {
@@ -279,7 +279,7 @@ func TestInvalidID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/todos/invalid", nil)
 	w := httptest.NewRecorder()
 
-	server.handleTodoByID(w, req)
+	server.HandleTodoByID(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
@@ -289,11 +289,11 @@ func TestInvalidID(t *testing.T) {
 func TestGetAllTodosWithDifferentStatuses(t *testing.T) {
 	server := setupServer()
 
-	testTasks := []tasks.Task{
-		{Header: "Task 1", Description: "Desc 1", Status: tasks.Assigned},
-		{Header: "Task 2", Description: "Desc 2", Status: tasks.InProgress},
-		{Header: "Task 3", Description: "Desc 3", Status: tasks.Completed},
-		{Header: "Task 4", Description: "Desc 4", Status: tasks.Dropped},
+	testTasks := []storage.Task{
+		{Header: "Task 1", Description: "Desc 1", Status: storage.Assigned},
+		{Header: "Task 2", Description: "Desc 2", Status: storage.InProgress},
+		{Header: "Task 3", Description: "Desc 3", Status: storage.Completed},
+		{Header: "Task 4", Description: "Desc 4", Status: storage.Dropped},
 	}
 
 	for _, task := range testTasks {
@@ -303,13 +303,13 @@ func TestGetAllTodosWithDifferentStatuses(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/todos", nil)
 	w := httptest.NewRecorder()
 
-	server.handleTodos(w, req)
+	server.HandleTodos(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	var result []*tasks.Task
+	var result []storage.Task
 	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -318,13 +318,13 @@ func TestGetAllTodosWithDifferentStatuses(t *testing.T) {
 		t.Errorf("expected 4 tasks, got %d", len(result))
 	}
 
-	statusCount := make(map[tasks.TaskStatus]int)
+	statusCount := make(map[storage.TaskStatus]int)
 	for _, task := range result {
 		statusCount[task.Status]++
 	}
 
-	if statusCount[tasks.Assigned] != 1 || statusCount[tasks.InProgress] != 1 ||
-		statusCount[tasks.Completed] != 1 || statusCount[tasks.Dropped] != 1 {
+	if statusCount[storage.Assigned] != 1 || statusCount[storage.InProgress] != 1 ||
+		statusCount[storage.Completed] != 1 || statusCount[storage.Dropped] != 1 {
 		t.Errorf("expected 1 task of each status, got %v", statusCount)
 	}
 }
@@ -334,13 +334,13 @@ func TestCreateTodoWithDifferentStatuses(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		status         tasks.TaskStatus
+		status         storage.TaskStatus
 		expectedStatus int
 	}{
-		{"create with assigned status", tasks.Assigned, http.StatusCreated},
-		{"create with in progress status", tasks.InProgress, http.StatusCreated},
-		{"create with completed status", tasks.Completed, http.StatusCreated},
-		{"create with dropped status", tasks.Dropped, http.StatusCreated},
+		{"create with assigned status", storage.Assigned, http.StatusCreated},
+		{"create with in progress status", storage.InProgress, http.StatusCreated},
+		{"create with completed status", storage.Completed, http.StatusCreated},
+		{"create with dropped status", storage.Dropped, http.StatusCreated},
 	}
 
 	for _, tt := range tests {
@@ -349,13 +349,13 @@ func TestCreateTodoWithDifferentStatuses(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/todos", bytes.NewBufferString(payload))
 			w := httptest.NewRecorder()
 
-			server.handleTodos(w, req)
+			server.HandleTodos(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
 			}
 
-			var result tasks.Task
+			var result storage.Task
 			if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 				t.Fatalf("failed to decode response: %v", err)
 			}

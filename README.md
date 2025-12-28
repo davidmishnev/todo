@@ -37,7 +37,7 @@ HTTP-сервер на Go для управления задачами.
 ## Запуск
 
 ```bash
-go run .
+go run ./cmd/server
 ```
 
 Сервер запустится на `http://localhost:8080`
@@ -102,14 +102,45 @@ go test ./...
 go test -v ./...
 
 # Только тесты сервера
-go test -v .
+go test -v ./internal/server
 
 # Только тесты хранилища
-go test -v ./tasks
+go test -v ./internal/storage
+```
+
+## Структура проекта
+
+```
+todo/
+├── cmd/
+│   └── server/          # Точка входа приложения
+│       └── main.go
+├── internal/
+│   ├── server/          # HTTP-обработчики
+│   │   ├── server.go
+│   │   └── server_test.go
+│   └── storage/         # Хранилище данных
+│       ├── task.go
+│       ├── errors.go
+│       ├── storage.go
+│       └── storage_test.go
+├── Dockerfile
+├── go.mod
+└── README.md
+```
+
+## Docker
+
+```bash
+# Собрать образ
+docker build -t todo-server .
+
+# Запустить контейнер
+docker run -p 8080:8080 todo-server
 ```
 
 ## Требования
 
-- Go 1.25.1 или выше
+- Go 1.23 или выше
 - Без внешних зависимостей (только стандартная библиотека)
 
