@@ -48,11 +48,12 @@ func (this *Storage) Update(id int, updated *Task) (*Task, error) {
 	defer this.mutex.Unlock()
 	task, exists := this.tasks[id]
 	if !exists {
-		return nil, ErrWrongArgument
+		return nil, ErrTaskNotFound
 	}
 	task.Header = updated.Header
 	task.Description = updated.Description
 	task.Status = updated.Status
+	this.tasks[id] = task
 
 	return &task, nil
 }
